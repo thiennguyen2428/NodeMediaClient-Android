@@ -287,7 +287,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
 
                 latch.countDown();
             }
-        })
+        });
 
         if (mCameraNum <= 1) {
             return result;
