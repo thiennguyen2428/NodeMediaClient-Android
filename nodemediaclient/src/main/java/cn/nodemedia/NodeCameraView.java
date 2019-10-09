@@ -256,37 +256,45 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         Thread newThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                if (mCamera != null) {
-                    mCamera.stopPreview();
-                    mCamera.release();
-                    mCamera = null;
-                }
-
-                mCameraId = mCameraId == CAMERA_BACK ? CAMERA_FRONT : CAMERA_BACK;
-
-                mCamera = Camera.open(mCameraId);
-
-                Camera.Parameters para = mCamera.getParameters();
-
-                choosePreviewSize(para, 1280, 720);
-                mCamera.setParameters(para);
-
-                setAutoFocus(true);
-
-                mCamera.setPreviewTexture(mSurfaceTexture);
-                mCamera.startPreview();
-                mCameraWidth = getPreviewSize().width;
-                mCameraHeight = getPreviewSize().height;
-                mGLSurfaceView.queueEvent(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (mNodeCameraViewCallback != null) {
-                            mNodeCameraViewCallback.OnChange(mCameraWidth, mCameraHeight, mSurfaceWidth, mSurfaceHeight);
-                        }
+                try {
+                    if (mCamera != null) {
+                        mCamera.stopPreview();
+                        mCamera.release();
+                        mCamera = null;
                     }
-                });
 
-                latch.countDown();
+                    mCameraId = mCameraId == CAMERA_BACK ? CAMERA_FRONT : CAMERA_BACK;
+
+
+                    mCamera = Camera.open(mCameraId);
+
+
+                    Camera.Parameters para = mCamera.getParameters();
+
+                    choosePreviewSize(para, 1280, 720);
+                    mCamera.setParameters(para);
+
+                    setAutoFocus(true);
+
+                    mCamera.setPreviewTexture(mSurfaceTexture);
+                    mCamera.startPreview();
+                    mCameraWidth = getPreviewSize().width;
+                    mCameraHeight = getPreviewSize().height;
+                    mGLSurfaceView.queueEvent(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (mNodeCameraViewCallback != null) {
+                                mNodeCameraViewCallback.OnChange(mCameraWidth, mCameraHeight, mSurfaceWidth, mSurfaceHeight);
+                            }
+                        }
+                    });
+
+                    result = mCameraId;
+                    latch.countDown();
+                } catch (Exception e) {
+                    result = -2;
+                    latch.countDown();
+                }
             }
         });
 
@@ -298,7 +306,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
 
         latch.await();
 
-        return mCameraId;
+        return result;
 
     }
 
