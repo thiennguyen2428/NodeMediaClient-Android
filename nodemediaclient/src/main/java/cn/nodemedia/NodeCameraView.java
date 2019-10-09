@@ -248,13 +248,13 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     }
 
     public int switchCamera() {
-        new Thread(new Runnable() {
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        int result = -1;
+
+        Thread newThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                if (mCameraNum <= 1) {
-                    return -1;
-                }
-
                 if (mCamera != null) {
                     mCamera.stopPreview();
                     mCamera.release();
@@ -263,39 +263,42 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
 
                 mCameraId = mCameraId == CAMERA_BACK ? CAMERA_FRONT : CAMERA_BACK;
 
-                try {
-                    mCamera = Camera.open(mCameraId);
-                } catch (RuntimeException e) {
-                    return -2;
-                }
+                mCamera = Camera.open(mCameraId);
 
-                try {
-                    Camera.Parameters para = mCamera.getParameters();
-                    choosePreviewSize(para, 1280, 720);
-                    mCamera.setParameters(para);
-                } catch (Exception e) {
-                    Log.w(TAG, "switchCamera setParameters:" + e.getMessage());
-                }
-                setAutoFocus(this.isAutoFocus);
-                try {
-                    mCamera.setPreviewTexture(mSurfaceTexture);
-                    mCamera.startPreview();
-                    mCameraWidth = getPreviewSize().width;
-                    mCameraHeight = getPreviewSize().height;
-                    mGLSurfaceView.queueEvent(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (mNodeCameraViewCallback != null) {
-                                mNodeCameraViewCallback.OnChange(mCameraWidth, mCameraHeight, mSurfaceWidth, mSurfaceHeight);
-                            }
+                Camera.Parameters para = mCamera.getParameters();
+
+                choosePreviewSize(para, 1280, 720);
+                mCamera.setParameters(para);
+
+                setAutoFocus(true);
+
+                mCamera.setPreviewTexture(mSurfaceTexture);
+                mCamera.startPreview();
+                mCameraWidth = getPreviewSize().width;
+                mCameraHeight = getPreviewSize().height;
+                mGLSurfaceView.queueEvent(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mNodeCameraViewCallback != null) {
+                            mNodeCameraViewCallback.OnChange(mCameraWidth, mCameraHeight, mSurfaceWidth, mSurfaceHeight);
                         }
-                    });
-                    return mCameraId;
-                } catch (Exception e) {
-                    return -3;
-                }
+                    }
+                });
+
+                latch.countDown();
             }
-        }).start();
+        })
+
+        if (mCameraNum <= 1) {
+            return result;
+        }
+
+        newThread.start();
+
+        latch.await();
+
+        return mCameraId;
+
     }
 
     //GLSurface callback
