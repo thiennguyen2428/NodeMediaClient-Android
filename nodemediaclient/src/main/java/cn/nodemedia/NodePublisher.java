@@ -169,13 +169,17 @@ public class NodePublisher implements NodeCameraView.NodeCameraViewCallback {
         jniSetAudioParam(bitrate, profile, sampleRate);
     }
 
-    public int switchCamera() {
+    public void switchCamera() {
         if (mNodeCameraView == null) {
-            return -1;
+            return;
         }
-        int ret = mNodeCameraView.switchCamera();
-        cameraId = ret >= 0 ? ret : cameraId;
-        return ret;
+         new Thread(new Runnable() {
+             @Override
+             public void run() {
+                 mNodeCameraView.switchCamera();
+             }
+         }).start();
+
     }
 
     public int startPreview() {

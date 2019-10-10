@@ -21,7 +21,6 @@ import android.widget.FrameLayout;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -181,7 +180,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         return getCameraInfo().orientation;
     }
 
-    synchronized private void choosePreviewSize(Camera.Parameters parms, int width, int height) {
+    private void choosePreviewSize(Camera.Parameters parms, int width, int height) {
         Camera.Size ppsfv = parms.getPreferredPreviewSizeForVideo();
         if (ppsfv != null) {
             Log.d(TAG, "Camera preferred preview size for video is " + ppsfv.width + "x" + ppsfv.height);
@@ -195,20 +194,20 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         }
     }
 
-    synchronized  public int setAutoFocus(boolean isAutoFocus) {
+    public int setAutoFocus(boolean isAutoFocus) {
         this.isAutoFocus = isAutoFocus;
+
         if (mCamera == null) {
             return -1;
         }
+
         Parameters parameters = mCamera.getParameters();
+
         if (isAutoFocus) {
             Log.i("video", Build.MODEL);
             List<String> focusModes = parameters.getSupportedFocusModes();
 
-            if (((Build.MODEL.startsWith("GT-I950"))
-                    || (Build.MODEL.endsWith("SCH-I959"))
-                    || (Build.MODEL.endsWith("MEIZU MX3")))
-                    && focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+            if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
                 parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             } else if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
                 parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
@@ -218,8 +217,10 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
             if (fms.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
                 parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
             }
+
             mCamera.autoFocus(null);
         }
+
         mCamera.setParameters(parameters);
         return 0;
     }
@@ -248,66 +249,50 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         }
     }
 
-    public int switchCamera() {
-        final CountDownLatch latch = new CountDownLatch(1);
-
-        int result = -1;
-
-        Thread newThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    if (mCamera != null) {
-                        mCamera.stopPreview();
-                        mCamera.release();
-                        mCamera = null;
-                    }
-
-                    mCameraId = mCameraId == CAMERA_BACK ? CAMERA_FRONT : CAMERA_BACK;
-
-
-                    mCamera = Camera.open(mCameraId);
-
-
-                    Camera.Parameters para = mCamera.getParameters();
-
-                    choosePreviewSize(para, 1280, 720);
-                    mCamera.setParameters(para);
-
-                    setAutoFocus(true);
-
-                    mCamera.setPreviewTexture(mSurfaceTexture);
-                    mCamera.startPreview();
-                    mCameraWidth = getPreviewSize().width;
-                    mCameraHeight = getPreviewSize().height;
-                    mGLSurfaceView.queueEvent(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (mNodeCameraViewCallback != null) {
-                                mNodeCameraViewCallback.OnChange(mCameraWidth, mCameraHeight, mSurfaceWidth, mSurfaceHeight);
-                            }
-                        }
-                    });
-
-                    result = mCameraId;
-                    latch.countDown();
-                } catch (Exception e) {
-                    result = -2;
-                    latch.countDown();
-                }
-            }
-        });
-
+    public void switchCamera() {
         if (mCameraNum <= 1) {
-            return result;
+            return;
         }
 
-        newThread.start();
+        if (mCamera != null) {
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
+        }
 
-        latch.await();
+        mCameraId = mCameraId == CAMERA_BACK ? CAMERA_FRONT : CAMERA_BACK;
 
-        return result;
+        try {
+            mCamera = Camera.open(mCameraId);
+        } catch (RuntimeException e) {
+            return;
+        }
 
+        try {
+            Camera.Parameters para = mCamera.getParameters();
+            choosePreviewSize(para, 1280, 720);
+            mCamera.setParameters(para);
+        } catch (Exception e) {
+            Log.w(TAG, "switchCamera setParameters:" + e.getMessage());
+        }
+        setAutoFocus(this.isAutoFocus);
+        try {
+            mCamera.setPreviewTexture(mSurfaceTexture);
+            mCamera.startPreview();
+            mCameraWidth = getPreviewSize().width;
+            mCameraHeight = getPreviewSize().height;
+            mGLSurfaceView.queueEvent(new Runnable() {
+                @Override
+                public void run() {
+                if (mNodeCameraViewCallback != null) {
+                        mNodeCameraViewCallback.OnChange(mCameraWidth, mCameraHeight, mSurfaceWidth, mSurfaceHeight);
+                    }
+                }
+            });
+            return;
+        } catch (Exception e) {
+            return;
+        }
     }
 
     //GLSurface callback
