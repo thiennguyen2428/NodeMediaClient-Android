@@ -204,13 +204,12 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         Parameters parameters = mCamera.getParameters();
 
         if (isAutoFocus) {
-            Log.i("video", Build.MODEL);
             List<String> focusModes = parameters.getSupportedFocusModes();
 
-            if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
-                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
-            } else if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
+            if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
                 parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+            } else if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             }
         } else {
             List<String> fms = parameters.getSupportedFocusModes();
