@@ -340,7 +340,6 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         Log.d(TAG, "GL onSurfaceChanged");
 
         try {
-            this.createTexture();
             if (mCamera == null) {
                 mCamera = Camera.open(mCameraId);
                 Camera.Parameters para = mCamera.getParameters();
@@ -374,6 +373,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     @Override
     public void onDrawFrame(GL10 gl) {
         synchronized(this) {
+            Log.d(TAG, "onFrameAvailable");
             if ( mUpdateST ) {
                 mSurfaceTexture.updateTexImage();
                 if (mNodeCameraViewCallback != null) {
@@ -419,17 +419,20 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
             if (mNodeCameraViewCallback != null) {
                 mNodeCameraViewCallback.OnDestroy();
             }
-            destroyTexture();
             if (mCamera != null) {
                 mCamera.stopPreview();
                 mCamera.release();
                 mCamera = null;
             }
+        } else {
+            Log.d(TAG, "destroyTexture");
+            destroyTexture();
         }
     }
 
     @Override
     public synchronized void onFrameAvailable(SurfaceTexture surfaceTexture) {
+        Log.d(TAG, "onFrameAvailable");
         if (mGLSurfaceView != null) {
             mUpdateST = true;
             mGLSurfaceView.requestRender();
