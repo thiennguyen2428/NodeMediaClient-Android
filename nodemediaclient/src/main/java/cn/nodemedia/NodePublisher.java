@@ -250,6 +250,14 @@ public class NodePublisher implements NodeCameraView.NodeCameraViewCallback {
         }
     }
 
+    public void onPause () {
+        mNodeCameraView.getGLSurfaceView().onPause();
+    }
+
+    public void onResume () {
+        mNodeCameraView.getGLSurfaceView().onResume();
+    }
+
     private void onCapture(byte[] pictureBuffer, int width, int height, int orientation) {
         if (mCapturePictureListener != null) {
             Bitmap sBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);

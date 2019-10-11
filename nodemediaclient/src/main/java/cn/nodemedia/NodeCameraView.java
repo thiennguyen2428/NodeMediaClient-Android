@@ -375,8 +375,9 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        synchronized (this) {
+        if (mSurfaceTexture != null) {
             mSurfaceTexture.updateTexImage();
+
             if (mNodeCameraViewCallback != null) {
                 mNodeCameraViewCallback.OnDraw(mTextureId);
             }
@@ -412,14 +413,14 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         Log.d(TAG, "SV surfaceDestroyed");
-        if (mCamera != null) {
-            mCamera.stopPreview();
-        }
+
         if (isStarting) {
             if (mNodeCameraViewCallback != null) {
                 mNodeCameraViewCallback.OnDestroy();
             }
+            destroyTexture();
             if (mCamera != null) {
+                mCamera.stopPreview();
                 mCamera.release();
                 mCamera = null;
             }
