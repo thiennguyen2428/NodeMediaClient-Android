@@ -102,9 +102,21 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     private void createTexture() {
         if (mTextureId == NO_TEXTURE) {
             Log.d(TAG, "GL createTexture");
+            // SurfaceTexture
+
             mTextureId = getExternalOESTextureID();
             mSurfaceTexture = new SurfaceTexture(mTextureId);
             mSurfaceTexture.setOnFrameAvailableListener(this);
+
+            // GLSurfaceView
+
+            mGLSurfaceView = new GLSurfaceView(mContext);
+            mGLSurfaceView.setEGLContextClientVersion(2);
+            mGLSurfaceView.setRenderer(this);
+            mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+            mGLSurfaceView.getHolder().addCallback(this);
+            mGLSurfaceView.getHolder().setKeepScreenOn(true);
+            mGLSurfaceView.setZOrderMediaOverlay(isMediaOverlay);
         }
     }
 
@@ -141,14 +153,6 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         } catch (Exception e) {
             Log.d(TAG, "startPreview setParameters:" + e.getMessage());
         }
-
-        mGLSurfaceView = new GLSurfaceView(mContext);
-        mGLSurfaceView.setEGLContextClientVersion(2);
-        mGLSurfaceView.setRenderer(this);
-        mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-        mGLSurfaceView.getHolder().addCallback(this);
-        mGLSurfaceView.getHolder().setKeepScreenOn(true);
-        mGLSurfaceView.setZOrderMediaOverlay(isMediaOverlay);
         addView(mGLSurfaceView);
         isStarting = true;
         return 0;
@@ -419,21 +423,19 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
             if (mNodeCameraViewCallback != null) {
                 mNodeCameraViewCallback.OnDestroy();
             }
+            destroyTexture();
             if (mCamera != null) {
                 mCamera.stopPreview();
                 mCamera.release();
                 mCamera = null;
             }
-        } else {
-            Log.d(TAG, "destroyTexture");
-            destroyTexture();
         }
     }
 
     @Override
     public synchronized void onFrameAvailable(SurfaceTexture surfaceTexture) {
-        Log.d(TAG, "onFrameAvailable");
         if (mGLSurfaceView != null) {
+            Log.d(TAG, "onFrameAvailable");
             mUpdateST = true;
             mGLSurfaceView.requestRender();
         }
