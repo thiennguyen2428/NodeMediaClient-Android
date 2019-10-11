@@ -102,21 +102,11 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     private void createTexture() {
         if (mTextureId == NO_TEXTURE) {
             Log.d(TAG, "GL createTexture");
-            // SurfaceTexture
 
+            // SurfaceTexture
             mTextureId = getExternalOESTextureID();
             mSurfaceTexture = new SurfaceTexture(mTextureId);
             mSurfaceTexture.setOnFrameAvailableListener(this);
-
-            // GLSurfaceView
-
-            mGLSurfaceView = new GLSurfaceView(mContext);
-            mGLSurfaceView.setEGLContextClientVersion(2);
-            mGLSurfaceView.setRenderer(this);
-            mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-            mGLSurfaceView.getHolder().addCallback(this);
-            mGLSurfaceView.getHolder().setKeepScreenOn(true);
-            mGLSurfaceView.setZOrderMediaOverlay(isMediaOverlay);
         }
     }
 
@@ -138,6 +128,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
 
     public synchronized int startPreview(int cameraId) {
         if (isStarting) return -1;
+        Log.d(TAG, "startPreview");
         try {
             mCameraId = cameraId > mCameraNum - 1 ? 0 : cameraId;
             mCamera = Camera.open(mCameraId);
@@ -153,6 +144,15 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         } catch (Exception e) {
             Log.d(TAG, "startPreview setParameters:" + e.getMessage());
         }
+        // GLSurfaceView
+
+        mGLSurfaceView = new GLSurfaceView(mContext);
+        mGLSurfaceView.setEGLContextClientVersion(2);
+        mGLSurfaceView.setRenderer(this);
+        mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+        mGLSurfaceView.getHolder().addCallback(this);
+        mGLSurfaceView.getHolder().setKeepScreenOn(true);
+        mGLSurfaceView.setZOrderMediaOverlay(isMediaOverlay);
         addView(mGLSurfaceView);
         isStarting = true;
         return 0;
@@ -161,6 +161,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     public synchronized int stopPreview() {
         if (!isStarting) return -1;
         isStarting = false;
+        Log.d(TAG, "stopPreview");
         mGLSurfaceView.queueEvent(new Runnable() {
             @Override
             public void run() {
