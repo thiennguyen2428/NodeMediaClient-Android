@@ -101,7 +101,6 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         if (mTextureId == NO_TEXTURE) {
             Log.d(TAG, "GL createTexture");
 
-            // SurfaceTexture
             mTextureId = getExternalOESTextureID();
             mSurfaceTexture = new SurfaceTexture(mTextureId);
             mSurfaceTexture.setOnFrameAvailableListener(this);
@@ -146,8 +145,10 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         mGLSurfaceView.setRenderer(this);
         mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
         mGLSurfaceView.getHolder().addCallback(this);
+        mGLSurfaceView.setDebugFlags(1 | 2);
         mGLSurfaceView.getHolder().setKeepScreenOn(true);
         mGLSurfaceView.setZOrderMediaOverlay(isMediaOverlay);
+
         addView(mGLSurfaceView);
         isStarting = true;
         return 0;
@@ -165,7 +166,6 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
                 }
             }
         });
-        mGLSurfaceView.onPause();
         removeView(mGLSurfaceView);
         mGLSurfaceView = null;
         try {
@@ -415,7 +415,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         if (mCamera != null) {
             mCamera.stopPreview();
         }
-        if (!isStarting) {
+        if (isStarting) {
             if (mNodeCameraViewCallback != null) {
                 mNodeCameraViewCallback.OnDestroy();
             }
@@ -427,7 +427,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     }
 
     @Override
-    public synchronized void onFrameAvailable(SurfaceTexture surfaceTexture) {
+    public void onFrameAvailable(SurfaceTexture surfaceTexture) {
         if (mGLSurfaceView != null) {
             mGLSurfaceView.requestRender();
         }
