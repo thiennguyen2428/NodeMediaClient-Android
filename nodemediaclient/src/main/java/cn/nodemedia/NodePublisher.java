@@ -205,6 +205,13 @@ public class NodePublisher implements NodeCameraView.NodeCameraViewCallback {
         return mNodeCameraView.stopPreview();
     }
 
+    public void closePreview() {
+        if (mNodeCameraView == null) {
+            return;
+        }
+        mNodeCameraView.close();
+    }
+
     public int setZoomScale(int zoomScale) {
         if (mNodeCameraView == null) {
             return -1;
