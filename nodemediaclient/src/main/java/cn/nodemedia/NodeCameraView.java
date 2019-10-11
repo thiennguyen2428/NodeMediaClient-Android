@@ -52,9 +52,10 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     private int mCameraHeight;
     private int mSurfaceWidth;
     private int mSurfaceHeight;
-    private float[] mtx = new float[16];
     private NodeCameraViewCallback mNodeCameraViewCallback;
     private boolean isMediaOverlay = false;
+    private boolean mUpdateST = false;
+
     public NodeCameraView(@NonNull Context context) {
         super(context);
         initView(context);
@@ -76,10 +77,26 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         initView(context);
     }
 
+    // Init view
 
     private void initView(Context context) {
         mContext = context;
         mCameraNum = Camera.getNumberOfCameras();
+    }
+
+    // Texture Helper
+
+    public int getExternalOESTextureID() {
+        int[] texture = new int[1];
+
+        GLES20.glGenTextures(1, texture, 0);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texture[0]);
+        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
+        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
+
+        return texture[0];
     }
 
     private void createTexture() {
@@ -101,16 +118,19 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         }
     }
 
+    // Camera Helper
+
     public GLSurfaceView getGLSurfaceView() {
         return mGLSurfaceView;
     }
 
-    public int startPreview(int cameraId) {
+    public synchronized int startPreview(int cameraId) {
         if (isStarting) return -1;
         try {
             mCameraId = cameraId > mCameraNum - 1 ? 0 : cameraId;
             mCamera = Camera.open(mCameraId);
         } catch (Exception e) {
+            Log.d(TAG, e.getMessage());
             return -2;
         }
         try {
@@ -119,7 +139,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
             mCamera.setParameters(para);
             setAutoFocus(this.isAutoFocus);
         } catch (Exception e) {
-            Log.w(TAG, "startPreview setParameters:" + e.getMessage());
+            Log.d(TAG, "startPreview setParameters:" + e.getMessage());
         }
 
         mGLSurfaceView = new GLSurfaceView(mContext);
@@ -134,7 +154,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         return 0;
     }
 
-    public int stopPreview() {
+    public synchronized int stopPreview() {
         if (!isStarting) return -1;
         isStarting = false;
         mGLSurfaceView.queueEvent(new Runnable() {
@@ -154,11 +174,11 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
                 mCamera = null;
             }
         } catch (Exception e) {
+            Log.d(TAG, e.getMessage());
             e.printStackTrace();
         }
         return 0;
     }
-
 
     private CameraInfo getCameraInfo() {
         CameraInfo cameraInfo = new CameraInfo();
@@ -167,14 +187,22 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     }
 
     public Camera.Size getPreviewSize() {
-        return mCamera.getParameters().getPreviewSize();
+        Camera.Size size = null;
+
+        try {
+            // Prevent bad camera state
+            size = mCamera.getParameters().getPreviewSize();
+        } catch (Exception e) {
+            Log.d(TAG, e.getMessage());
+        }
+
+        return size;
     }
 
     public boolean isFrontCamera() {
         CameraInfo info = getCameraInfo();
         return info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT;
     }
-
 
     public int getCameraOrientation() {
         return getCameraInfo().orientation;
@@ -264,6 +292,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         try {
             mCamera = Camera.open(mCameraId);
         } catch (RuntimeException e) {
+            Log.d(TAG, e.getMessage());
             return;
         }
 
@@ -272,7 +301,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
             choosePreviewSize(para, 1280, 720);
             mCamera.setParameters(para);
         } catch (Exception e) {
-            Log.w(TAG, "switchCamera setParameters:" + e.getMessage());
+            Log.d(TAG, "switchCamera setParameters:" + e.getMessage());
         }
         setAutoFocus(this.isAutoFocus);
         try {
@@ -290,11 +319,13 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
             });
             return;
         } catch (Exception e) {
+            Log.d(TAG, e.getMessage());
             return;
         }
     }
 
     //GLSurface callback
+
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         Log.d(TAG, "GL onSurfaceCreated");
@@ -307,29 +338,51 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         Log.d(TAG, "GL onSurfaceChanged");
-        mCameraWidth = getPreviewSize().width;
-        mCameraHeight = getPreviewSize().height;
-        mSurfaceWidth = width;
-        mSurfaceHeight = height;
-        if (mNodeCameraViewCallback != null) {
-            mNodeCameraViewCallback.OnChange(mCameraWidth, mCameraHeight, mSurfaceWidth, mSurfaceHeight);
-        }
+
         try {
+            this.createTexture();
+            if (mCamera == null) {
+                mCamera = Camera.open(mCameraId);
+                Camera.Parameters para = mCamera.getParameters();
+                choosePreviewSize(para, 1280, 720);
+                mCamera.setParameters(para);
+                setAutoFocus(this.isAutoFocus);
+            }
+
             mCamera.setPreviewTexture(mSurfaceTexture);
             mCamera.startPreview();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.d(TAG, e.getMessage());
+        }
+
+        Camera.Size size = getPreviewSize();
+
+        if (size != null) {
+            mCameraWidth = getPreviewSize().width;
+            mCameraHeight = getPreviewSize().height;
+        }
+
+        mSurfaceWidth = width;
+
+        mSurfaceHeight = height;
+
+        if (mNodeCameraViewCallback != null) {
+            mNodeCameraViewCallback.OnChange(mCameraWidth, mCameraHeight, mSurfaceWidth, mSurfaceHeight);
         }
     }
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        mSurfaceTexture.updateTexImage();
-        if (mNodeCameraViewCallback != null) {
-            mNodeCameraViewCallback.OnDraw(mTextureId);
+        synchronized(this) {
+            if ( mUpdateST ) {
+                mSurfaceTexture.updateTexImage();
+                if (mNodeCameraViewCallback != null) {
+                    mNodeCameraViewCallback.OnDraw(mTextureId);
+                }
+                mUpdateST = false;
+            }
         }
     }
-
 
     interface NodeCameraViewCallback {
 
@@ -347,6 +400,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     }
 
     //Surface callback
+
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         Log.d(TAG, "SV surfaceCreated");
@@ -360,40 +414,25 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         Log.d(TAG, "SV surfaceDestroyed");
-        if (mCamera != null) {
-            mCamera.stopPreview();
-        }
-        if (!isStarting) {
+
+        if (isStarting) {
             if (mNodeCameraViewCallback != null) {
                 mNodeCameraViewCallback.OnDestroy();
             }
             destroyTexture();
             if (mCamera != null) {
+                mCamera.stopPreview();
                 mCamera.release();
                 mCamera = null;
             }
-
         }
     }
 
     @Override
-    public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+    public synchronized void onFrameAvailable(SurfaceTexture surfaceTexture) {
         if (mGLSurfaceView != null) {
+            mUpdateST = true;
             mGLSurfaceView.requestRender();
         }
-
-    }
-
-    public int getExternalOESTextureID() {
-        int[] texture = new int[1];
-
-        GLES20.glGenTextures(1, texture, 0);
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texture[0]);
-        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
-        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
-
-        return texture[0];
     }
 }
