@@ -54,7 +54,6 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     private int mSurfaceHeight;
     private NodeCameraViewCallback mNodeCameraViewCallback;
     private boolean isMediaOverlay = false;
-    private boolean mUpdateST = false;
 
     public NodeCameraView(@NonNull Context context) {
         super(context);
@@ -77,25 +76,10 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         initView(context);
     }
 
-    // Init view
 
     private void initView(Context context) {
         mContext = context;
         mCameraNum = Camera.getNumberOfCameras();
-
-        mGLSurfaceView = new GLSurfaceView(mContext);
-        mGLSurfaceView.setEGLContextClientVersion(2);
-        mGLSurfaceView.setRenderer(this);
-        mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-        mGLSurfaceView.getHolder().addCallback(this);
-        mGLSurfaceView.getHolder().setKeepScreenOn(true);
-        mGLSurfaceView.setZOrderMediaOverlay(isMediaOverlay);
-        addView(mGLSurfaceView);
-    }
-    public void close() {
-        destroyTexture();
-        removeView(mGLSurfaceView);
-        mGLSurfaceView = null;
     }
 
     // Texture Helper
@@ -134,8 +118,6 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         }
     }
 
-    // Camera Helper
-
     public GLSurfaceView getGLSurfaceView() {
         return mGLSurfaceView;
     }
@@ -158,7 +140,15 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         } catch (Exception e) {
             Log.d(TAG, "startPreview setParameters:" + e.getMessage());
         }
-        mGLSurfaceView.onResume();
+
+        mGLSurfaceView = new GLSurfaceView(mContext);
+        mGLSurfaceView.setEGLContextClientVersion(2);
+        mGLSurfaceView.setRenderer(this);
+        mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+        mGLSurfaceView.getHolder().addCallback(this);
+        mGLSurfaceView.getHolder().setKeepScreenOn(true);
+        mGLSurfaceView.setZOrderMediaOverlay(isMediaOverlay);
+        addView(mGLSurfaceView);
         isStarting = true;
         return 0;
     }
@@ -177,6 +167,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         });
         mGLSurfaceView.onPause();
         removeView(mGLSurfaceView);
+        mGLSurfaceView = null;
         try {
             if (mCamera != null) {
                 mCamera.stopPreview();
@@ -189,6 +180,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         }
         return 0;
     }
+
 
     private CameraInfo getCameraInfo() {
         CameraInfo cameraInfo = new CameraInfo();
@@ -213,6 +205,7 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         CameraInfo info = getCameraInfo();
         return info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT;
     }
+
 
     public int getCameraOrientation() {
         return getCameraInfo().orientation;
@@ -382,14 +375,10 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        synchronized(this) {
-            Log.d(TAG, "onFrameAvailable");
-            if ( mUpdateST ) {
-                mSurfaceTexture.updateTexImage();
-                if (mNodeCameraViewCallback != null) {
-                    mNodeCameraViewCallback.OnDraw(mTextureId);
-                }
-                mUpdateST = false;
+        synchronized (this) {
+            mSurfaceTexture.updateTexImage();
+            if (mNodeCameraViewCallback != null) {
+                mNodeCameraViewCallback.OnDraw(mTextureId);
             }
         }
     }
@@ -410,7 +399,6 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     }
 
     //Surface callback
-
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         Log.d(TAG, "SV surfaceCreated");
@@ -424,13 +412,14 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         Log.d(TAG, "SV surfaceDestroyed");
-
-        if (isStarting) {
+        if (mCamera != null) {
+            mCamera.stopPreview();
+        }
+        if (!isStarting) {
             if (mNodeCameraViewCallback != null) {
                 mNodeCameraViewCallback.OnDestroy();
             }
             if (mCamera != null) {
-                mCamera.stopPreview();
                 mCamera.release();
                 mCamera = null;
             }
@@ -440,7 +429,6 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
     @Override
     public synchronized void onFrameAvailable(SurfaceTexture surfaceTexture) {
         if (mGLSurfaceView != null) {
-            mUpdateST = true;
             mGLSurfaceView.requestRender();
         }
     }

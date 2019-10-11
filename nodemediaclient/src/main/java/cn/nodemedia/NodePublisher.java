@@ -209,7 +209,6 @@ public class NodePublisher implements NodeCameraView.NodeCameraViewCallback {
         if (mNodeCameraView == null) {
             return;
         }
-        mNodeCameraView.close();
     }
 
     public int setZoomScale(int zoomScale) {
