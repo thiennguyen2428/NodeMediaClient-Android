@@ -251,11 +251,16 @@ public class NodePublisher implements NodeCameraView.NodeCameraViewCallback {
     }
 
     public void onPause () {
-        mNodeCameraView.getGLSurfaceView().onPause();
+
+        if (mNodeCameraView.getGLSurfaceView() != null) {
+            mNodeCameraView.getGLSurfaceView().onPause();
+        }
     }
 
     public void onResume () {
-        mNodeCameraView.getGLSurfaceView().onResume();
+        if (mNodeCameraView.getGLSurfaceView() != null) {
+            mNodeCameraView.getGLSurfaceView().onResume();
+        }
     }
 
     private void onCapture(byte[] pictureBuffer, int width, int height, int orientation) {
