@@ -306,7 +306,12 @@ public class NodeCameraView extends FrameLayout implements GLSurfaceView.Rendere
         } catch (Exception e) {
             Log.d(TAG, "switchCamera setParameters:" + e.getMessage());
         }
-        setAutoFocus(this.isAutoFocus);
+        try {
+            setAutoFocus(this.isAutoFocus);
+        } catch (Exception e) {
+            Log.d(TAG, "setAutoFocus" + e.getMessage());
+        }
+
         try {
             mCamera.setPreviewTexture(mSurfaceTexture);
             mCamera.startPreview();
